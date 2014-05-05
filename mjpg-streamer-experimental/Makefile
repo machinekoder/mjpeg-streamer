@@ -33,12 +33,12 @@ APP_BINARY = mjpg_streamer
 
 # define the names and targets of the plugins
 PLUGINS = input_uvc.so
-#PLUGINS += output_file.so
-#PLUGINS += output_udp.so
+PLUGINS += output_file.so
+PLUGINS += output_udp.so
 PLUGINS += output_http.so
 PLUGINS += input_testpicture.so
-#PLUGINS += output_autofocus.so
-#PLUGINS += input_file.so
+PLUGINS += output_autofocus.so
+PLUGINS += input_file.so
 # PLUGINS += input_pylon.so
 # PLUGINS += input_megatec.so
 # PLUGINS += output_mars2020.so
@@ -46,6 +46,7 @@ PLUGINS += input_testpicture.so
 # PLUGINS += input_ptp2.so # commented out because it depends on libgphoto
 #PLUGINS += input_http.so 
 # PLUGINS += output_viewer.so # commented out because it depends on SDL
+PLUGINS += output_zmqserver.so
 
 # define the names of object files
 OBJECTS=mjpg_streamer.o utils.o
@@ -137,6 +138,10 @@ output_viewer.so: mjpg_streamer.h utils.h
 	make -C plugins/output_viewer all
 	cp plugins/output_viewer/output_viewer.so .
 
+output_zmqserver.so: mjpg_streamer.h utils.h
+	make -C plugins/output_zmqserver all
+	cp plugins/output_zmqserver/output_zmqserver.so .
+
 # cleanup
 clean:
 	make -C plugins/input_uvc $@
@@ -149,6 +154,7 @@ clean:
 	make -C plugins/output_rtsp $@
 #	make -C plugins/output_mars2020 $@
 	make -C plugins/input_http $@
+	make -C plugins/output_zmqserver $@
 	rm -f *.a *.o $(APP_BINARY) core *~ *.so *.lo
 
 # useful to make a backup "make tgz"

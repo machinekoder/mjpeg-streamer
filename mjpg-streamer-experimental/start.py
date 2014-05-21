@@ -157,12 +157,9 @@ def choose_ip(pref):
     # retrieve list of network interfaces
     interfaces = netifaces.interfaces()
 
-    # delete localhost type interfaces
-    netifs = [i for i in interfaces if not i.startswith('lo')]
-
     # find a match in preference oder
     for p in pref:
-        for i in netifs:
+        for i in interfaces:
             if i.startswith(p):
                 ifcfg = netifaces.ifaddresses(i)
                 # we want the first IPv4 address

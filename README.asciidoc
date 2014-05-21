@@ -1,0 +1,12 @@
+mjpeg-streamer
+==============
+
+"MJPG-streamer", is a command line application that copied JPG-frame from a single input plugin to multiple output plugins.
+
+Necessary libraries (Debian)
+----------------------------
+
+----
+sudo apt-get install libprotobuf-c0-dev protobuf-c-compiler
++ zmq
+----

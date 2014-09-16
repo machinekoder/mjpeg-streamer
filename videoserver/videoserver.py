@@ -3,61 +3,14 @@
 import os
 import sys
 import time
-import uuid
 from stat import *
 import subprocess
 import threading
-import avahi
 import socket
 import netifaces
-import dbus
 
 import ConfigParser
-
-class ZeroconfService:
-    """A simple class to publish a network service with zeroconf using
-    avahi.
-    """
-
-    def __init__(self, name, port, stype="_http._tcp", subtype=None,
-                 domain="", host="", text=""):
-        self.name = name
-        self.stype = stype
-        self.domain = domain
-        self.host = host
-        self.port = port
-        self.text = text
-        self.subtype = subtype
-
-    def publish(self):
-        bus = dbus.SystemBus()
-        server = dbus.Interface(
-                         bus.get_object(
-                                 avahi.DBUS_NAME,
-                                 avahi.DBUS_PATH_SERVER),
-                        avahi.DBUS_INTERFACE_SERVER)
-
-        g = dbus.Interface(
-                    bus.get_object(avahi.DBUS_NAME,
-                                   server.EntryGroupNew()),
-                    avahi.DBUS_INTERFACE_ENTRY_GROUP)
-
-        g.AddService(avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
-                     self.name, self.stype, self.domain, self.host,
-                     dbus.UInt16(self.port), self.text)
-
-        if self.subtype:
-            g.AddServiceSubtype(avahi.IF_UNSPEC,
-                                avahi.PROTO_UNSPEC,
-                                dbus.UInt32(0),
-                                self.name, self.stype, self.domain,
-                                self.subtype)
-
-        g.Commit()
-        self.group = g
-
-    def unpublish(self):
-        self.group.Reset()
+from machinekit import service
 
 
 class VideoDevice:
@@ -77,12 +30,11 @@ class VideoDevice:
 
 class VideoServer(threading.Thread):
 
-    def __init__(self, uri, inifile, interface="",
-                 ipv4="", svc_uuid=None, debug=False):
+    def __init__(self, uri, inifile, ip="", svc_uuid=None, debug=False):
         threading.Thread.__init__(self)
         self.inifile = inifile
         self.interface = interface
-        self.ipv4 = ipv4
+        self.ip = ip
         self.uri = uri
         self.svc_uuid = svc_uuid
         self.debug = debug
@@ -121,8 +73,8 @@ class VideoServer(threading.Thread):
         sock.close()
 
         videoDevice.port = port
-        videoDevice.dsname = self.uri + self.ipv4 + ':' + str(videoDevice.port)
-        videoDevice.zmqUri = self.uri + self.interface + ':' + str(videoDevice.port)
+        videoDevice.dsname = self.uri + self.ip + ':' + str(videoDevice.port)
+        videoDevice.zmqUri = self.uri + self.ip + ':' + str(videoDevice.port)
 
         if self.debug:
             print ((
@@ -131,7 +83,7 @@ class VideoServer(threading.Thread):
 
         libpath = '/usr/local/lib/'
         os.environ['LD_LIBRARY_PATH'] = libpath
-        
+
         command = ['mjpg_streamer -i \"' + libpath + 'input_uvc.so -n'
             + ' -f ' + str(videoDevice.framerate)
             + ' -r ' + videoDevice.resolution
@@ -146,21 +98,13 @@ class VideoServer(threading.Thread):
 
         videoDevice.process = subprocess.Popen(command, shell=True)
 
-        me = uuid.uuid1()
-        videoDevice.txtRecord = [str('dsn=' + videoDevice.dsname),
-                              str('uuid=' + self.svc_uuid),
-                              str('service=' + 'video'),
-                              str('instance=' + str(me))]
-
-        if self.debug:
-            print (("txtrec:", videoDevice.txtRecord))
-
         try:
-            videoDevice.sdname = id + ' on %s' % self.ipv4
-            videoDevice.service = ZeroconfService(videoDevice.sdname, videoDevice.port,
-                                           stype='_machinekit._tcp',
-                                           subtype="_video._sub._machinekit._tcp",
-                                           text=videoDevice.txtRecord)
+            videoDevice.service = service.Service(type='video',
+                                  svcUuid=svc_uuid,
+                                  dsn=videoDevice.dsname,
+                                  port=videoDevice.port,
+                                  ip=self.ip,
+                                  debug=self.debug)
             videoDevice.service.publish()
         except Exception as e:
             print (('cannot register DNS service', e))
@@ -174,7 +118,6 @@ class VideoServer(threading.Thread):
 
         videDevice.service.unpublish()
         videoDevice.process.terminate()
-        videoDevice.sd.close()
         videoDevice.process = None
         videoDevice.service = None
 
@@ -195,9 +138,9 @@ class VideoServer(threading.Thread):
 
 def choose_ip(pref):
     '''
-    given an interface preference list, return a tuple (interface, IPv4)
+    given an interface preference list, return a tuple (interface, ip)
     or None if no match found
-    If an interface has several IPv4 addresses, the first one is picked.
+    If an interface has several ip addresses, the first one is picked.
     pref is a list of interface names or prefixes:
 
     pref = ['eth0','usb3']
@@ -213,7 +156,7 @@ def choose_ip(pref):
         for i in interfaces:
             if i.startswith(p):
                 ifcfg = netifaces.ifaddresses(i)
-                # we want the first IPv4 address
+                # we want the first ip address
                 try:
                     ip = ifcfg[netifaces.AF_INET][0]['addr']
                 except KeyError:
@@ -224,18 +167,27 @@ def choose_ip(pref):
 
 def main():
     debug = True
-    uuid = os.getenv("MKUUID")
-    if uuid is None:
-        print >> sys.stderr, "no MKUUID environemnt variable set"
-        print >> sys.stderr, "run export MKUUID=`uuidgen` first"
+
+    mkini = os.getenv("MACHINEKIT_INI")
+    if mkini is None:
+        sys.stderr.write("no MACHINEKIT_INI environemnt variable set")
         sys.exit(1)
 
-    prefs = ['wlan', 'eth', 'usb']
+    mki = ConfigParser.ConfigParser()
+    mki.read(mkini)
+    mkUuid = mki.get("MACHINEKIT", "MKUUID")
+    remote = mki.getint("MACHINEKIT", "REMOTE")
+    prefs = mki.get("MACHINEKIT", "INTERFACES").split()
 
-    iface = choose_ip(prefs)
-    if not iface:
-        print >> sys.stderr, "failed to determine preferred interface (preference = %s)" % prefs
-        sys.exit(1)
+    if remote == 0:
+        print("Remote communication is deactivated, mkwrapper will use the loopback interfaces")
+        print(("set REMOTE in " + mkini + " to 1 to enable remote communication"))
+        iface = ['lo', '127.0.0.1']
+    else:
+        iface = choose_ip(prefs)
+        if not iface:
+            sys.stderr.write("failed to determine preferred interface (preference = %s)" % prefs)
+            sys.exit(1)
 
     if debug:
         print (("announcing videoserver on ", iface))
@@ -243,9 +195,8 @@ def main():
     uri = "tcp://"
 
     video = VideoServer(uri, "video.ini",
-                       svc_uuid=uuid,
-                       interface=iface[0],
-                       ipv4=iface[1],
+                       svc_uuid=mkUuid,
+                       ip=iface[1],
                        debug=debug)
     video.setDaemon(True)
     video.start()

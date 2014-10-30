@@ -8,6 +8,7 @@ import subprocess
 import threading
 import socket
 import netifaces
+import argparse
 
 import ConfigParser
 from machinekit import service
@@ -165,7 +166,14 @@ def choose_ip(pref):
 
 
 def main():
-    debug = True
+    parser = argparse.ArgumentParser(description='Videoserver provides a webcam interface for Machinetalk')
+    parser.add_argument('-ini', help='INI file', default='video.ini')
+    parser.add_argument('-d', '--debug', help='Enable debug mode', action='store_true')
+    parser.add_argument('webcams', help='List of webcams to stream', nargs='+')
+
+    args = parser.parse_args()
+
+    debug = args.debug
 
     mkini = os.getenv("MACHINEKIT_INI")
     if mkini is None:
@@ -179,7 +187,7 @@ def main():
     prefs = mki.get("MACHINEKIT", "INTERFACES").split()
 
     if remote == 0:
-        print("Remote communication is deactivated, mkwrapper will use the loopback interfaces")
+        print("Remote communication is deactivated, videoserver will use the loopback interfaces")
         print(("set REMOTE in " + mkini + " to 1 to enable remote communication"))
         iface = ['lo', '127.0.0.1']
     else:
@@ -189,17 +197,19 @@ def main():
             sys.exit(1)
 
     if debug:
-        print (("announcing videoserver on ", iface))
+        print (("announcing videoserver on " + str(iface)))
 
     uri = "tcp://"
 
-    video = VideoServer(uri, "video.ini",
+    video = VideoServer(uri, args.ini,
                        svc_uuid=mkUuid,
                        ip=iface[1],
                        debug=debug)
     video.setDaemon(True)
     video.start()
-    video.startVideo('Webcam1')
+
+    for webcam in args.webcams:
+        video.startVideo(webcam)
 
     while True:
         time.sleep(1)

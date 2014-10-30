@@ -33,7 +33,6 @@ class VideoServer(threading.Thread):
     def __init__(self, uri, inifile, ip="", svc_uuid=None, debug=False):
         threading.Thread.__init__(self)
         self.inifile = inifile
-        self.interface = interface
         self.ip = ip
         self.uri = uri
         self.svc_uuid = svc_uuid
@@ -100,7 +99,7 @@ class VideoServer(threading.Thread):
 
         try:
             videoDevice.service = service.Service(type='video',
-                                  svcUuid=svc_uuid,
+                                  svcUuid=self.svc_uuid,
                                   dsn=videoDevice.dsname,
                                   port=videoDevice.port,
                                   ip=self.ip,

@@ -12,6 +12,7 @@ import argparse
 
 import ConfigParser
 from machinekit import service
+from machinekit import config
 
 
 class VideoDevice:
@@ -175,9 +176,12 @@ def main():
 
     debug = args.debug
 
+    mkconfig = config.Config()
     mkini = os.getenv("MACHINEKIT_INI")
     if mkini is None:
-        sys.stderr.write("no MACHINEKIT_INI environemnt variable set")
+        mkini = mkconfig.MACHINEKIT_INI
+    if not os.path.isfile(mkini):
+        sys.stderr.write("MACHINEKIT_INI " + mkini + " does not exist\n")
         sys.exit(1)
 
     mki = ConfigParser.ConfigParser()

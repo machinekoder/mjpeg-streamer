@@ -61,8 +61,8 @@ class VideoServer(threading.Thread):
                 print (("device:", videoDevice.device))
                 print (("bufferSize:", videoDevice.bufferSize))
 
-    def startVideo(self, id):
-        videoDevice = self.videoDevices[id]
+    def startVideo(self, deviceId):
+        videoDevice = self.videoDevices[deviceId]
 
         if videoDevice.process is not None:
             print ("video device already running")
@@ -85,14 +85,14 @@ class VideoServer(threading.Thread):
         libpath = '/usr/local/lib/'
         os.environ['LD_LIBRARY_PATH'] = libpath
 
-        command = ['mjpg_streamer -i \"' + libpath + 'input_uvc.so -n'
-            + ' -f ' + str(videoDevice.framerate)
-            + ' -r ' + videoDevice.resolution
-            + ' -q ' + videoDevice.quality
-            + ' -d ' + videoDevice.device
-            + '" -o \"' + libpath + 'output_zmqserver.so --address '
-            + videoDevice.zmqUri
-            + ' --buffer_size ' + str(videoDevice.bufferSize) + '\"']
+        command = ['mjpg_streamer -i \"' + libpath + 'input_uvc.so -n' +
+                   ' -f ' + str(videoDevice.framerate) +
+                   ' -r ' + videoDevice.resolution +
+                   ' -q ' + videoDevice.quality +
+                   ' -d ' + videoDevice.device +
+                   '" -o \"' + libpath + 'output_zmqserver.so --address ' +
+                   videoDevice.zmqUri +
+                   ' --buffer_size ' + str(videoDevice.bufferSize) + '\"']
 
         if self.debug:
             print (("command:", command))
@@ -110,14 +110,14 @@ class VideoServer(threading.Thread):
         except Exception as e:
             print (('cannot register DNS service', e))
 
-    def stopVideo(self, id):
-        videoDevice = self.videoDevices[id]
+    def stopVideo(self, deviceId):
+        videoDevice = self.videoDevices[deviceId]
 
         if videoDevice.process is None:
             print ("video device not running")
             return
 
-        videDevice.service.unpublish()
+        videoDevice.service.unpublish()
         videoDevice.process.terminate()
         videoDevice.process = None
         videoDevice.service = None
@@ -134,7 +134,7 @@ class VideoServer(threading.Thread):
                 videoDevice = self.videoDevices[n]
                 if videoDevice.process is None:
                     continue
-                stopVideo(n)
+                self.stopVideo(n)
 
 
 def choose_ip(pref):

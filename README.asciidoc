@@ -3,6 +3,17 @@ mjpeg-streamer
 
 "MJPG-streamer", is a command line application that copied JPG-frame from a single input plugin to multiple output plugins.
 
+Installing
+----------
+To use the ZeroMQ plugin you have to install the mjpeg-streamer-experimental version. 
+Please install the required libraries first.
+
+----
+cd mjpeg-streamer-experimental
+make
+sudo make install
+----
+
 Necessary libraries (Debian)
 ----------------------------
 

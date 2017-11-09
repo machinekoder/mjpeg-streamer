@@ -18,5 +18,5 @@ Necessary libraries (Debian)
 ----------------------------
 
 ----
-sudo apt-get install libzmq4-dev libczmq-dev libprotobuf-dev libprotobuf-c0-dev protobuf-c-compiler
+sudo apt-get install libzmq4-dev libczmq-dev libprotobuf-dev libprotobuf-c0-dev protobuf-c-compiler libjpeg62-turbo-dev
 ----

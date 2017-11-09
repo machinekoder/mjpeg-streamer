@@ -665,7 +665,7 @@ int v4l2SetControl(struct vdIn *vd, int control_id, int value, int plugin_number
             return 0;
         } else { // not user class controls
             DBG("Control type: EXTENDED\n");
-            struct v4l2_ext_controls ext_ctrls = {0};
+            struct v4l2_ext_controls ext_ctrls = {{0}};
             struct v4l2_ext_control ext_ctrl = {0};
             ext_ctrl.id = pglobal->in[plugin_number].in_parameters[i].ctrl.id;
 
@@ -707,31 +707,26 @@ int v4l2SetControl(struct vdIn *vd, int control_id, int value, int plugin_number
 int v4l2UpControl(struct vdIn *vd, int control) {
   struct v4l2_control control_s;
   struct v4l2_queryctrl queryctrl;
-  int min, max, current, step, val_def;
+  int max, current, step;
   int err;
 
   if (isv4l2Control(vd, control, &queryctrl) < 0)
     return -1;
 
-  min = queryctrl.minimum;
   max = queryctrl.maximum;
   step = queryctrl.step;
-  val_def = queryctrl.default_value;
   if ( (current = v4l2GetControl(vd, control)) == -1 )
     return -1;
 
   current += step;
 
-  //fprintf(stderr, "max %d, min %d, step %d, default %d ,current %d \n",max,min,step,val_def,current);
   if (current <= max) {
     control_s.id = control;
     control_s.value = current;
     if ((err = ioctl(vd->fd, VIDIOC_S_CTRL, &control_s)) < 0) {
       return -1;
     }
-    //fprintf(stderr, "Control name:%s set to value:%d\n", queryctrl.name, control_s.value);
   } else {
-    //fprintf(stderr, "Control name:%s already has max value:%d \n", queryctrl.name, max);
     return -1;
   }
 
@@ -741,21 +736,18 @@ int v4l2UpControl(struct vdIn *vd, int control) {
 int v4l2DownControl(struct vdIn *vd, int control) {
   struct v4l2_control control_s;
   struct v4l2_queryctrl queryctrl;
-  int min, max, current, step, val_def;
+  int min, current, step;
   int err;
 
   if (isv4l2Control(vd, control, &queryctrl) < 0)
     return -1;
 
   min = queryctrl.minimum;
-  max = queryctrl.maximum;
   step = queryctrl.step;
-  val_def = queryctrl.default_value;
   if ( (current = v4l2GetControl(vd, control)) == -1 )
     return -1;
 
   current -= step;
-  //fprintf(stderr, "max %d, min %d, step %d, default %d ,current %d \n",max,min,step,val_def,current);
 
   if (current >= min) {
     control_s.id = control;
@@ -763,11 +755,9 @@ int v4l2DownControl(struct vdIn *vd, int control) {
     if ((err = ioctl(vd->fd, VIDIOC_S_CTRL, &control_s)) < 0) {
       return -1;
     }
-    //fprintf(stderr, "Control name:%s set to value:%d\n", queryctrl.name, control_s.value);
   }
   else {
     return -1;
-    //fprintf(stderr, "Control name:%s already has min value:%d \n", queryctrl.name, min);
   }
 
   return 0;
@@ -874,7 +864,7 @@ void control_readed(struct vdIn *vd, struct v4l2_queryctrl *ctrl, globals *pglob
         }
     } else {
         DBG("V4L2 parameter found: %s value %d Class: EXTENDED \n", ctrl->name, c.value);
-        struct v4l2_ext_controls ext_ctrls = {0};
+        struct v4l2_ext_controls ext_ctrls = {{0}};
         struct v4l2_ext_control ext_ctrl = {0};
         ext_ctrl.id = ctrl->id;
 #ifdef V4L2_CTRL_TYPE_STRING
